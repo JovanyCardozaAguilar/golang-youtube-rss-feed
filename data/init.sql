@@ -1,24 +1,15 @@
-CREATE TABLE Account (
-    id SERIAL PRIMARY KEY,
-    FirstName VARCHAR(255) NOT NULL,
-    LastName VARCHAR(255) NOT NULL,
-    Token VARCHAR(255) NOT NULL
+CREATE TABLE VIDEO (
+    id SERIAL NOT NULL,
+    videoId VARCHAR(255) PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    thumbnail VARCHAR(255) NOT NULL,
+    watched BOOLEAN NOT NULL,
+    FOREIGN KEY(videoChannel) REFERENCES CHANNEL(channelId)
 );
 
-CREATE TABLE temp (
-    id SERIAL PRIMARY KEY,
-    FirstName VARCHAR(255) NOT NULL,
-    LastName VARCHAR(255) NOT NULL,
-    Token VARCHAR(255) NOT NULL
+CREATE TABLE CHANNEL (
+    id SERIAL NOT NULL,
+    channelId VARCHAR(255) PRIMARY KEY,
+    username VARCHAR(255) NOT NULL,
+    avatar VARCHAR(255) NOT NULL
 );
-
-COPY temp
-FROM '/docker-entrypoint-initdb.d/test.csv'
-DELIMITER ','
-CSV HEADER;
-
-INSERT INTO Account (id, FirstName, LastName, Token)
-SELECT id, FirstName, LastName, Token
-FROM temp;
-
-DROP TABLE IF EXISTS temp;
