@@ -7,70 +7,66 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strconv"
 )
 
-func handleClientProfile(w http.ResponseWriter, r *http.Request) {
-	var clientId = r.URL.Query().Get("clientId")
-	id, _ := strconv.Atoi(clientId)
-	clientProfile, ok := data.GetUser(pool, ctx, id)
-	if ok != nil || clientId == "" {
-		http.Error(w, "ClientID does not exist Forbidden", http.StatusForbidden)
+func handleChannelProfile(w http.ResponseWriter, r *http.Request) {
+	var channelId = r.URL.Query().Get("channelId")
+	channelProfile, ok := data.GetChannel(pool, ctx, channelId)
+	if ok != nil || channelId == "" {
+		http.Error(w, "ChannelID does not exist Forbidden", http.StatusForbidden)
 		return
 	}
-	r = r.WithContext(context.WithValue(r.Context(), "clientProfile", clientProfile))
+	r = r.WithContext(context.WithValue(r.Context(), "channelProfile", channelProfile))
 	switch r.Method {
 	case http.MethodGet:
-		GetClientProfile(w, r)
+		GetChannelProfile(w, r)
 	case http.MethodPatch:
-		UpdateClientProfile(w, r)
+		UpdateChannelProfile(w, r)
 	case http.MethodPut:
-		PutClientProfile(w, r)
+		PutChannelProfile(w, r)
 	case http.MethodDelete:
-		DeleteClientProfile(w, r)
+		DeleteChannelProfile(w, r)
 	default:
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 	}
 }
 
-func GetClientProfile(w http.ResponseWriter, r *http.Request) {
-	clientProfile := r.Context().Value("clientProfile").(*models.ClientProfile)
+func GetChannelProfile(w http.ResponseWriter, r *http.Request) {
+	channelProfile := r.Context().Value("channelProfile").(*models.ChannelProfile)
 
 	w.Header().Set("Content-Type", "application/json")
 
-	response := models.ClientProfile{
-		Id:        clientProfile.Id,
-		FirstName: clientProfile.FirstName,
-		LastName:  clientProfile.LastName,
-		Token:     clientProfile.Token,
+	response := models.ChannelProfile{
+		ChannelId:	channelProfile.ChannelId,
+		Username:	channelProfile.Username,
+		Avatar:	channelProfile.Avatar,
 	}
 	json.NewEncoder(w).Encode(response)
 }
 
-func UpdateClientProfile(w http.ResponseWriter, r *http.Request) {
-	clientProfile := r.Context().Value("clientProfile").(*models.ClientProfile)
+func UpdateChannelProfile(w http.ResponseWriter, r *http.Request) {
+	channelProfile := r.Context().Value("channelProfile").(*models.ChannelProfile)
 
 	// Decode the JSON payload into struct
-	var payloadData models.ClientProfile
+	var payloadData models.ChannelProfile
 	if err := json.NewDecoder(r.Body).Decode(&payloadData); err != nil {
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
 	}
 	defer r.Body.Close()
 
-	clientProfile.FirstName = payloadData.FirstName
-	clientProfile.LastName = payloadData.LastName
-	clientProfile.Token = payloadData.Token
+	channelProfile.Username = payloadData.Username
+	channelProfile.Avatar = payloadData.Avatar
 	fmt.Println("The payload data: ", payloadData)
-	fmt.Println("The changed Client Profile: ", clientProfile)
-	data.UpdateUser(pool, ctx, clientProfile.Id, *clientProfile)
+	fmt.Println("The changed Channel Profile: ", channelProfile)
+	data.UpdateChannel(pool, ctx, channelProfile.ChannelId, *channelProfile)
 
 	w.WriteHeader(http.StatusOK)
 }
 
-func PutClientProfile(w http.ResponseWriter, r *http.Request) {
+func PutChannelProfile(w http.ResponseWriter, r *http.Request) {
 	// Decode the JSON payload into struct
-	var payloadData models.ClientProfile
+	var payloadData models.ChannelProfile
 	if err := json.NewDecoder(r.Body).Decode(&payloadData); err != nil {
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
@@ -78,14 +74,14 @@ func PutClientProfile(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	fmt.Println("The payload data: ", payloadData)
-	data.InsertUser(pool, ctx, payloadData)
+	data.InsertChannel(pool, ctx, payloadData)
 
 	w.WriteHeader(http.StatusOK)
 }
 
-func DeleteClientProfile(w http.ResponseWriter, r *http.Request) {
-	clientProfile := r.Context().Value("clientProfile").(*models.ClientProfile)
-	data.DeleteUser(pool, ctx, clientProfile.Id)
+func DeleteChannelProfile(w http.ResponseWriter, r *http.Request) {
+	channelProfile := r.Context().Value("channelProfile").(*models.ChannelProfile)
+	data.DeleteChannel(pool, ctx, channelProfile.ChannelId)
 
 	w.WriteHeader(http.StatusOK)
 }

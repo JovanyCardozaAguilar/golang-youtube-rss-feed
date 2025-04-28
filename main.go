@@ -32,7 +32,7 @@ func main() {
 		fmt.Printf("%#v\n", account)
 	}
 
-	http.HandleFunc("/user/profile", handleClientProfile)
+	http.HandleFunc("/channel", handleChannelProfile)
 
 	log.Println("Server is on port 8080...")
 	log.Fatal(http.ListenAndServe(":8080", nil))
