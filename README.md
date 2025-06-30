@@ -1,4 +1,4 @@
-HOW TO RUN (ONLY TESTED ON UBUNTU):
+HOW TO RUN (ONLY TESTED ON UBUNTU/POP! OS):
 1. Run docker with
 sudo docker compose up
 
@@ -6,5 +6,6 @@ sudo docker compose up
 go run .
 
 3. Send request through postman or preferred method
+
 Example:
 http://localhost:8080/channel?channelId=1
