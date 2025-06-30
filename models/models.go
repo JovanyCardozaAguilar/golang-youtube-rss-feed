@@ -6,9 +6,8 @@ type Postgres struct {
 	Db *pgxpool.Pool
 }
 
-type ClientProfile struct {
-	Id        int
-	FirstName string
-	LastName  string
-	Token     string
+type ChannelProfile struct {
+	ChannelId string
+	Username string
+	Avatar string
 }

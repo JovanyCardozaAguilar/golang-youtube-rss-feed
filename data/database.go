@@ -42,53 +42,52 @@ func QueryGreeting(ctx context.Context, pg *models.Postgres) (string, error) {
 }
 
 // Test Single Query queries from the database.
-func QuerySingleTest(ctx context.Context, pg *models.Postgres) (*models.ClientProfile, error) {
-	var client models.ClientProfile
-	err := pg.Db.QueryRow(ctx, "SELECT * FROM Account WHERE id = 1").Scan(&client.Id, &client.FirstName, &client.LastName, &client.Token)
+func QuerySingleTest(ctx context.Context, pg *models.Postgres) (*models.ChannelProfile, error) {
+	var channel models.ChannelProfile
+	err := pg.Db.QueryRow(ctx, "SELECT * FROM CHANNEL WHERE channelId = '1'").Scan(&channel.ChannelId, &channel.Username, &channel.Avatar)
 	if err != nil {
 		return nil, fmt.Errorf("QueryRow failed: %v", err)
 	}
-	return &client, nil
+	return &channel, nil
 }
 
 // Test Multiple Query queries from the database.
-func QueryMultiTest(ctx context.Context, pg *models.Postgres) ([]models.ClientProfile, error) {
-	rows, err := pg.Db.Query(ctx, "SELECT * FROM Account")
+func QueryMultiTest(ctx context.Context, pg *models.Postgres) ([]models.ChannelProfile, error) {
+	rows, err := pg.Db.Query(ctx, "SELECT * FROM CHANNEL")
 	if err != nil {
 		return nil, fmt.Errorf("query failed: %v", err)
 	}
 
-	return pgx.CollectRows(rows, pgx.RowToStructByPos[models.ClientProfile])
+	return pgx.CollectRows(rows, pgx.RowToStructByPos[models.ChannelProfile])
 }
 
-func GetUser(pg *models.Postgres, ctx context.Context, acctId int) (*models.ClientProfile, error) {
+func GetChannel(pg *models.Postgres, ctx context.Context, acctId string) (*models.ChannelProfile, error) {
 	query := `
-	SELECT * FROM Account WHERE id = @acctId
+	SELECT * FROM CHANNEL WHERE channelId = @acctId
 	`
-	var client models.ClientProfile
+	var channel models.ChannelProfile
 	// Define the named arguments for the query.
 	args := pgx.NamedArgs{
 		"acctId": acctId,
 	}
 
-	err := pg.Db.QueryRow(ctx, query, args).Scan(&client.Id, &client.FirstName, &client.LastName, &client.Token)
+	err := pg.Db.QueryRow(ctx, query, args).Scan(&channel.ChannelId, &channel.Username, &channel.Avatar)
 	if err != nil {
 		return nil, fmt.Errorf("QueryRow failed: %v", err)
 	}
-	return &client, nil
+	return &channel, nil
 }
 
-func UpdateUser(pg *models.Postgres, ctx context.Context, acctId int, accountDetails models.ClientProfile) error {
+func UpdateChannel(pg *models.Postgres, ctx context.Context, acctId string, accountDetails models.ChannelProfile) error {
 	query := `
 			UPDATE Account 
 			SET id = @Id, FirstName = @FirstName, LastName = @LastName, Token = @Token
 			WHERE id = @Id
 			`
 	args := pgx.NamedArgs{
-		"Id":        accountDetails.Id,
-		"FirstName": accountDetails.FirstName,
-		"LastName":  accountDetails.LastName,
-		"Token":     accountDetails.Token,
+		"ChannelId":	accountDetails.ChannelId,
+		"Username":	accountDetails.Username,
+		"Avatar":	accountDetails.Avatar,
 	}
 	_, err := pg.Db.Exec(ctx, query, args)
 	if err != nil {
@@ -98,13 +97,12 @@ func UpdateUser(pg *models.Postgres, ctx context.Context, acctId int, accountDet
 	return nil
 }
 
-func InsertUser(pg *models.Postgres, ctx context.Context, accountDetails models.ClientProfile) error {
+func InsertChannel(pg *models.Postgres, ctx context.Context, accountDetails models.ChannelProfile) error {
 	query := `INSERT INTO Account (id, FirstName, LastName, Token) VALUES (@Id, @FirstName, @LastName, @Token)`
 	args := pgx.NamedArgs{
-		"Id":        accountDetails.Id,
-		"FirstName": accountDetails.FirstName,
-		"LastName":  accountDetails.LastName,
-		"Token":     accountDetails.Token,
+		"ChannelId":	accountDetails.ChannelId,
+		"Username":	accountDetails.Username,
+		"Avatar":	accountDetails.Avatar,
 	}
 	_, err := pg.Db.Exec(ctx, query, args)
 	if err != nil {
@@ -114,7 +112,7 @@ func InsertUser(pg *models.Postgres, ctx context.Context, accountDetails models.
 	return nil
 }
 
-func DeleteUser(pg *models.Postgres, ctx context.Context, acctId int) error {
+func DeleteChannel(pg *models.Postgres, ctx context.Context, acctId string) error {
 	query := `
 	DELETE FROM Account WHERE id = @Id
 	`

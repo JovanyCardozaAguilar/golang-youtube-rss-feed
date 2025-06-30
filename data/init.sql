@@ -1,15 +1,38 @@
-CREATE TABLE VIDEO (
-    id SERIAL NOT NULL,
-    videoId VARCHAR(255) PRIMARY KEY,
-    title VARCHAR(255) NOT NULL,
-    thumbnail VARCHAR(255) NOT NULL,
-    watched BOOLEAN NOT NULL,
-    FOREIGN KEY(videoChannel) REFERENCES CHANNEL(channelId)
+CREATE TABLE CHANNEL (
+	channelId VARCHAR(255) PRIMARY KEY,
+	username VARCHAR(255) NOT NULL,
+	avatar VARCHAR(255) NOT NULL
 );
 
-CREATE TABLE CHANNEL (
-    id SERIAL NOT NULL,
-    channelId VARCHAR(255) PRIMARY KEY,
-    username VARCHAR(255) NOT NULL,
-    avatar VARCHAR(255) NOT NULL
+CREATE TABLE VIDEO (
+	videoId VARCHAR(255) PRIMARY KEY,
+	title VARCHAR(255) NOT NULL,
+	thumbnail VARCHAR(255) NOT NULL,
+	watched BOOLEAN NOT NULL,
+	videoChannel VARCHAR(255) NOT NULL,
+	FOREIGN KEY(videoChannel) REFERENCES CHANNEL(channelId)
 );
+
+CREATE TABLE CATEGORY (
+	categoryId VARCHAR(255) PRIMARY KEY,
+	catName VARCHAR(255) NOT NULL,
+	catChannel VARCHAR(255) NOT NULL,
+	FOREIGN KEY(catChannel) REFERENCES CHANNEL(channelId)
+);
+
+CREATE TABLE temp (
+	channelId VARCHAR(255) PRIMARY KEY,
+	username VARCHAR(255) NOT NULL,
+	avatar VARCHAR(255) NOT NULL
+);
+
+COPY temp
+FROM '/docker-entrypoint-initdb.d/test.csv'
+DELIMITER ','
+CSV HEADER;
+
+INSERT INTO CHANNEL (channelId, username, avatar)
+SELECT channelId, username, avatar
+FROM temp;
+
+DROP TABLE IF EXISTS temp;
