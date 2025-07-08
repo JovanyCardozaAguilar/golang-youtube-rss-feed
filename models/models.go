@@ -11,3 +11,17 @@ type ChannelProfile struct {
 	Username string
 	Avatar string
 }
+
+type VideoProfile struct {
+	VideoId string
+	Title string
+	Thumbnail string
+	Watched bool
+	VideoChannel string
+}
+
+type CategoryProfile struct {
+	CategoryId string
+	CatName string
+	CatChannel string
+}

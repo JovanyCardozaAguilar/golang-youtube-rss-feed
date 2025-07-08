@@ -26,10 +26,24 @@ func main() {
 	}
 	fmt.Println("The Pool: ", pool)
 	fmt.Println(data.QueryGreeting(ctx, pool))
-	fmt.Println(data.QuerySingleTest(ctx, pool))
-	accounts, _ := data.QueryMultiTest(ctx, pool)
+	// Test channels
+	fmt.Println(data.QuerySingleTestChannel(ctx, pool))
+	accounts, _ := data.QueryMultiTestChannel(ctx, pool)
 	for _, account := range accounts {
 		fmt.Printf("%#v\n", account)
+	}
+	// Test videos
+	fmt.Println(data.QuerySingleTestVideo(ctx, pool))
+	videos, _ := data.QueryMultiTestVideo(ctx, pool)
+	for _, video := range videos {
+		fmt.Printf("%#v\n", video)
+	}
+
+	// Test videos
+	fmt.Println(data.QuerySingleTestCategory(ctx, pool))
+	categories, _ := data.QueryMultiTestCategory(ctx, pool)
+	for _, category := range categories {
+		fmt.Printf("%#v\n", category)
 	}
 
 	http.HandleFunc("/channel", handleChannelProfile)

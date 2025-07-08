@@ -1,3 +1,6 @@
-ChannelId, Username, Avatar
-1,name1,123
-2,name2,512
+ChannelId,Username,Avatar,VideoId,Title,Thumbnail,Watched,CategoryId,CatName
+1,name1,123,videoID1,title1,thumbnail1,0,default,default
+2,name2,512,videoID2,title2,thumbnail2,0,cat1,sport
+2,name2,512,videoID2,title2,thumbnail2,0,cat2,music
+2,name2,512,videoID2.2,title2.2,thumbnail2.2,1,cat2,music
+3,name3,52,videoID3,title3,thumbnail3,0,default,default
