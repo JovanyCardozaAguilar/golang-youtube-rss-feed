@@ -47,6 +47,8 @@ func main() {
 	}
 
 	http.HandleFunc("/channel", handleChannelProfile)
+	http.HandleFunc("/video", handleVideoProfile)
+	http.HandleFunc("/category", handleCategoryProfile)
 
 	log.Println("Server is on port 8080...")
 	log.Fatal(http.ListenAndServe(":8080", nil))
