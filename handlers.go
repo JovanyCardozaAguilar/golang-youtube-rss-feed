@@ -11,20 +11,24 @@ import (
 )
 
 func handleChannelProfile(w http.ResponseWriter, r *http.Request) {
-	var channelId = r.URL.Query().Get("channelId")
+	if (r.Method == http.MethodPut) {
+		PutChannelProfile(w, r)
+		return
+	}
+
+	channelId := r.URL.Query().Get("channelId")
 	channelProfile, ok := data.GetChannel(pool, ctx, channelId)
+	r = r.WithContext(context.WithValue(r.Context(), "channelProfile", channelProfile))
 	if ok != nil || channelId == "" {
 		http.Error(w, "ChannelID does not exist Forbidden", http.StatusForbidden)
 		return
 	}
-	r = r.WithContext(context.WithValue(r.Context(), "channelProfile", channelProfile))
+
 	switch r.Method {
 	case http.MethodGet:
 		GetChannelProfile(w, r)
 	case http.MethodPatch:
 		UpdateChannelProfile(w, r)
-	case http.MethodPut:
-		PutChannelProfile(w, r)
 	case http.MethodDelete:
 		DeleteChannelProfile(w, r)
 	default:
@@ -90,20 +94,25 @@ func DeleteChannelProfile(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleVideoProfile(w http.ResponseWriter, r *http.Request) {
-	var videoId = r.URL.Query().Get("videoId")
+	if (r.Method == http.MethodPut) {
+		PutVideoProfile(w, r)
+		return
+	}
+
+	videoId := r.URL.Query().Get("videoId")
 	videoProfile, ok := data.GetVideo(pool, ctx, videoId)
+	r = r.WithContext(context.WithValue(r.Context(), "videoProfile", videoProfile))
+
 	if ok != nil || videoId == "" {
 		http.Error(w, "VideoID does not exist Forbidden", http.StatusForbidden)
 		return
 	}
-	r = r.WithContext(context.WithValue(r.Context(), "videoProfile", videoProfile))
+
 	switch r.Method {
 	case http.MethodGet:
 		GetVideoProfile(w, r)
 	case http.MethodPatch:
 		UpdateVideoProfile(w, r)
-	case http.MethodPut:
-		PutVideoProfile(w, r)
 	case http.MethodDelete:
 		DeleteVideoProfile(w, r)
 	default:
@@ -118,10 +127,10 @@ func GetVideoProfile(w http.ResponseWriter, r *http.Request) {
 
 	response := models.VideoProfile{
 		VideoId:	videoProfile.VideoId,
+		VChannelId:	videoProfile.VChannelId,
 		Title:	videoProfile.Title,
 		Thumbnail:	videoProfile.Thumbnail,
 		Watched:	videoProfile.Watched,
-		VideoChannel:	videoProfile.VideoChannel,
 	}
 	json.NewEncoder(w).Encode(response)
 }
@@ -173,20 +182,25 @@ func DeleteVideoProfile(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleCategoryProfile(w http.ResponseWriter, r *http.Request) {
-	var categoryId = r.URL.Query().Get("categoryId")
+	if (r.Method == http.MethodPut) {
+		PutCategoryProfile(w, r)
+		return
+	}
+
+	categoryId := r.URL.Query().Get("categoryId")
 	categoryProfile, ok := data.GetCategory(pool, ctx, categoryId)
+	r = r.WithContext(context.WithValue(r.Context(), "categoryProfile", categoryProfile))
+
 	if ok != nil || categoryId == "" {
 		http.Error(w, "CategoryID does not exist Forbidden", http.StatusForbidden)
 		return
 	}
-	r = r.WithContext(context.WithValue(r.Context(), "categoryProfile", categoryProfile))
+	
 	switch r.Method {
 	case http.MethodGet:
 		GetCategoryProfile(w, r)
 	case http.MethodPatch:
 		UpdateCategoryProfile(w, r)
-	case http.MethodPut:
-		PutCategoryProfile(w, r)
 	case http.MethodDelete:
 		DeleteCategoryProfile(w, r)
 	default:
@@ -202,7 +216,6 @@ func GetCategoryProfile(w http.ResponseWriter, r *http.Request) {
 	response := models.CategoryProfile{
 		CategoryId:	categoryProfile.CategoryId,
 		CatName:	categoryProfile.CatName,
-		CatChannel:	categoryProfile.CatChannel,
 	}
 	json.NewEncoder(w).Encode(response)
 }
@@ -219,9 +232,7 @@ func UpdateCategoryProfile(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	categoryProfile.CategoryId = payloadData.CategoryId 
 	categoryProfile.CatName = payloadData.CatName 
-	categoryProfile.CatChannel = payloadData.CatChannel 
 	fmt.Println("The payload data: ", payloadData)
 	fmt.Println("The changed Category Profile: ", categoryProfile)
 	data.UpdateCategory(pool, ctx, categoryProfile.CategoryId, *categoryProfile)
@@ -248,6 +259,174 @@ func PutCategoryProfile(w http.ResponseWriter, r *http.Request) {
 func DeleteCategoryProfile(w http.ResponseWriter, r *http.Request) {
 	categoryProfile := r.Context().Value("categoryProfile").(*models.CategoryProfile)
 	data.DeleteCategory(pool, ctx, categoryProfile.CategoryId)
+
+	w.WriteHeader(http.StatusOK)
+}
+
+func handleChannelCategoryProfile(w http.ResponseWriter, r *http.Request) {
+	if (r.Method == http.MethodPut) {
+		PutChannelCategoryProfile(w, r)
+		return
+	}
+	if (r.Method == http.MethodDelete) {
+		DeleteChannelCategoryProfile(w, r)
+		return
+	}
+
+	channelCategoryId := r.URL.Query().Get("channelCategoryId")
+	channelCategoryProfile, ok := data.GetChannelCategory(pool, ctx, channelCategoryId)
+	r = r.WithContext(context.WithValue(r.Context(), "channelCategoryProfile", channelCategoryProfile))
+	if ok != nil || channelCategoryId == "" {
+		http.Error(w, "channelCategoryID does not exist Forbidden", http.StatusForbidden)
+		return
+	}
+	if len(channelCategoryProfile) == 0 {
+		http.Error(w, "No channel-category found", http.StatusNotFound)
+		return
+	}
+
+	switch r.Method {
+	case http.MethodGet:
+		GetChannelCategoryProfile(w, r)
+	default:
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+func GetChannelCategoryProfile(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	json.NewEncoder(w).Encode(r.Context().Value("channelCategoryProfile"))
+}
+
+func PutChannelCategoryProfile(w http.ResponseWriter, r *http.Request) {
+	// Decode the JSON payload into struct
+	var payloadData models.ChannelCategoryProfile
+	if err := json.NewDecoder(r.Body).Decode(&payloadData); err != nil {
+		log.Println("JSON Decode Error:", err)
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+	defer r.Body.Close()
+
+	fmt.Println("The payload data: ", payloadData)
+	err := data.InsertChannelCategory(pool, ctx, payloadData)
+
+	if (err != nil) { 
+		http.Error(w, "channel-category put error", http.StatusNotFound)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+func DeleteChannelCategoryProfile(w http.ResponseWriter, r *http.Request) {
+	// Decode the JSON payload into struct
+	var payloadData models.ChannelCategoryProfile
+	if err := json.NewDecoder(r.Body).Decode(&payloadData); err != nil {
+		log.Println("JSON Decode Error:", err)
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+	defer r.Body.Close()
+
+	// Validate required field in JSON
+	if payloadData.CcChannelId == "" || payloadData.CcCategoryId == "" {
+		http.Error(w, "Missing ccChannelId or ccCategoryId in body", http.StatusBadRequest)
+		return
+	}
+
+	fmt.Println("The payload data: ", payloadData)
+	err := data.DeleteChannelCategory(pool, ctx, payloadData)
+
+	if (err != nil) { 
+		http.Error(w, "channel-category delete error", http.StatusNotFound)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+func handleVideoCategoryProfile(w http.ResponseWriter, r *http.Request) {
+	if (r.Method == http.MethodPut) {
+		PutVideoCategoryProfile(w, r)
+		return
+	}
+	if (r.Method == http.MethodDelete) {
+		DeleteVideoCategoryProfile(w, r)
+		return
+	}
+
+	videoCategoryId := r.URL.Query().Get("videoCategoryId")
+	videoCategoryProfile, ok := data.GetVideoCategory(pool, ctx, videoCategoryId)
+	r = r.WithContext(context.WithValue(r.Context(), "videoCategoryProfile", videoCategoryProfile))
+	if ok != nil || videoCategoryId == "" {
+		http.Error(w, "videoCategoryID does not exist Forbidden", http.StatusForbidden)
+		return
+	}
+	if len(videoCategoryProfile) == 0 {
+		http.Error(w, "No video-category found", http.StatusNotFound)
+		return
+	}
+
+	switch r.Method {
+	case http.MethodGet:
+		GetVideoCategoryProfile(w, r)
+	default:
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+func GetVideoCategoryProfile(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	json.NewEncoder(w).Encode(r.Context().Value("videoCategoryProfile"))
+}
+
+func PutVideoCategoryProfile(w http.ResponseWriter, r *http.Request) {
+	// Decode the JSON payload into struct
+	var payloadData models.VideoCategoryProfile
+	if err := json.NewDecoder(r.Body).Decode(&payloadData); err != nil {
+		log.Println("JSON Decode Error:", err)
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+	defer r.Body.Close()
+
+	fmt.Println("The payload data: ", payloadData)
+	err := data.InsertVideoCategory(pool, ctx, payloadData)
+
+	if (err != nil) { 
+		http.Error(w, "video-category put error", http.StatusNotFound)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+func DeleteVideoCategoryProfile(w http.ResponseWriter, r *http.Request) {
+	// Decode the JSON payload into struct
+	var payloadData models.VideoCategoryProfile
+	if err := json.NewDecoder(r.Body).Decode(&payloadData); err != nil {
+		log.Println("JSON Decode Error:", err)
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+	defer r.Body.Close()
+
+	// Validate required field in JSON
+	if payloadData.VcVideoId == "" || payloadData.VcCategoryId == "" {
+		http.Error(w, "Missing vcVideoId or vcCategoryId in body", http.StatusBadRequest)
+		return
+	}
+
+	fmt.Println("The payload data: ", payloadData)
+	err := data.DeleteVideoCategory(pool, ctx, payloadData)
+
+	if (err != nil) { 
+		http.Error(w, "video-category delete error", http.StatusNotFound)
+		return
+	}
 
 	w.WriteHeader(http.StatusOK)
 }

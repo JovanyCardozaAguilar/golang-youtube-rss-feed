@@ -4,3 +4,4 @@ ChannelId,Username,Avatar,VideoId,Title,Thumbnail,Watched,CategoryId,CatName
 2,name2,512,videoID2,title2,thumbnail2,0,cat2,music
 2,name2,512,videoID2.2,title2.2,thumbnail2.2,1,cat2,music
 3,name3,52,videoID3,title3,thumbnail3,0,default,default
+4,name4,451,videoID4,title4,thumbnail4,0,cat2,music

@@ -63,7 +63,7 @@ func QueryMultiTestChannel(ctx context.Context, pg *models.Postgres) ([]models.C
 
 func QuerySingleTestVideo(ctx context.Context, pg *models.Postgres) (*models.VideoProfile, error) {
 	var video models.VideoProfile
-	err := pg.Db.QueryRow(ctx, "SELECT * FROM VIDEO WHERE videoId = 'videoID2'").Scan(&video.VideoId, &video.Title, &video.Thumbnail, &video.Watched, &video.VideoChannel)
+	err := pg.Db.QueryRow(ctx, "SELECT * FROM VIDEO WHERE videoId = 'videoID2'").Scan(&video.VideoId, &video.Title, &video.Thumbnail, &video.Watched)
 	if err != nil {
 		return nil, fmt.Errorf("QueryRow failed: %v", err)
 	}
@@ -81,7 +81,7 @@ func QueryMultiTestVideo(ctx context.Context, pg *models.Postgres) ([]models.Vid
 
 func QuerySingleTestCategory(ctx context.Context, pg *models.Postgres) (*models.CategoryProfile, error) {
 	var category models.CategoryProfile
-	err := pg.Db.QueryRow(ctx, "SELECT * FROM CATEGORY WHERE categoryId = 'cat2'").Scan(&category.CategoryId, &category.CatName, &category.CatChannel)
+	err := pg.Db.QueryRow(ctx, "SELECT * FROM CATEGORY WHERE categoryId = 'cat2'").Scan(&category.CategoryId, &category.CatName)
 	if err != nil {
 		return nil, fmt.Errorf("QueryRow failed: %v", err)
 	}
@@ -124,7 +124,7 @@ func GetVideo(pg *models.Postgres, ctx context.Context, vidId string) (*models.V
 		"vidId": vidId,
 	}
 
-	err := pg.Db.QueryRow(ctx, query, args).Scan(&video.VideoId, &video.Title, &video.Thumbnail, &video.Watched, &video.VideoChannel)
+	err := pg.Db.QueryRow(ctx, query, args).Scan(&video.VideoId, &video.VChannelId, &video.Title, &video.Thumbnail, &video.Watched)
 	if err != nil {
 		return nil, fmt.Errorf("QueryRow failed: %v", err)
 	}
@@ -141,11 +141,49 @@ func GetCategory(pg *models.Postgres, ctx context.Context, catId string) (*model
 		"catId": catId,
 	}
 
-	err := pg.Db.QueryRow(ctx, query, args).Scan(&category.CategoryId, &category.CatName, &category.CatChannel)
+	err := pg.Db.QueryRow(ctx, query, args).Scan(&category.CategoryId, &category.CatName)
 	if err != nil {
 		return nil, fmt.Errorf("QueryRow failed: %v", err)
 	}
 	return &category, nil
+}
+
+func GetChannelCategory(pg *models.Postgres, ctx context.Context, ccId string) ([]models.ChannelProfile, error) {
+	query := `
+	SELECT channelId, username, avatar 
+	FROM Channel
+	JOIN Channel_Category ON channelId = ccChannelId
+	WHERE ccCategoryId = @category
+	`
+	// Define the named arguments for the query.
+	args := pgx.NamedArgs{
+		"category": ccId,
+	}
+
+	rows, err := pg.Db.Query(ctx, query, args)
+	if err != nil {
+		return nil, fmt.Errorf("Query failed: %w", err)
+	}
+	return pgx.CollectRows(rows, pgx.RowToStructByPos[models.ChannelProfile])
+}
+
+func GetVideoCategory(pg *models.Postgres, ctx context.Context, vcId string) ([]models.VideoProfile, error) {
+	query := `
+	SELECT videoId, vChannelId, title, thumbnail, watched
+	FROM Video
+	JOIN Video_Category ON videoId = vcVideoId
+	WHERE vcCategoryId = @category
+	`
+	// Define the named arguments for the query.
+	args := pgx.NamedArgs{
+		"category": vcId,
+	}
+
+	rows, err := pg.Db.Query(ctx, query, args)
+	if err != nil {
+		return nil, fmt.Errorf("QueryRow failed: %v", err)
+	}
+	return pgx.CollectRows(rows, pgx.RowToStructByPos[models.VideoProfile])
 }
 
 func UpdateChannel(pg *models.Postgres, ctx context.Context, chanId string, chanDetails models.ChannelProfile) error {
@@ -170,7 +208,7 @@ func UpdateChannel(pg *models.Postgres, ctx context.Context, chanId string, chan
 func UpdateVideo(pg *models.Postgres, ctx context.Context, vidId string, vidDetails models.VideoProfile) error {
 	query := `
 			UPDATE Video
-			SET videoId = @VideoId, title = @Title, thumbnail = @Thumbnail, watched = @Watched, videoChannel = @VideoChannel
+			SET videoId = @VideoId, title = @Title, thumbnail = @Thumbnail, watched = @Watched
 			WHERE videoId = @VideoId
 			`
 	args := pgx.NamedArgs{
@@ -178,7 +216,6 @@ func UpdateVideo(pg *models.Postgres, ctx context.Context, vidId string, vidDeta
 		"Title":	vidDetails.Title,
 		"Thumbnail":	vidDetails.Thumbnail,
 		"Watched":	vidDetails.Watched,
-		"VideoChannel":	vidDetails.VideoChannel,
 	}
 	_, err := pg.Db.Exec(ctx, query, args)
 	if err != nil {
@@ -191,13 +228,12 @@ func UpdateVideo(pg *models.Postgres, ctx context.Context, vidId string, vidDeta
 func UpdateCategory(pg *models.Postgres, ctx context.Context, catId string, catDetails models.CategoryProfile) error {
 	query := `
 			UPDATE Category
-			SET categoryId = @CategoryId, catName = @CatName, catChannel = @catChannel
+			SET categoryId = @CategoryId, catName = @CatName
 			WHERE categoryId = @CategoryId
 			`
 	args := pgx.NamedArgs{
 		"CategoryId":	catDetails.CategoryId,
 		"CatName":	catDetails.CatName,
-		"CatChannel":	catDetails.CatChannel,
 	}
 	_, err := pg.Db.Exec(ctx, query, args)
 	if err != nil {
@@ -208,7 +244,7 @@ func UpdateCategory(pg *models.Postgres, ctx context.Context, catId string, catD
 }
 
 func InsertChannel(pg *models.Postgres, ctx context.Context, accountDetails models.ChannelProfile) error {
-	query := `INSERT INTO Account (id, FirstName, LastName, Token) VALUES (@Id, @FirstName, @LastName, @Token)`
+	query := `INSERT INTO Channel (channelid, username, avatar) VALUES (@ChannelId, @Username, @Avatar)`
 	args := pgx.NamedArgs{
 		"ChannelId":	accountDetails.ChannelId,
 		"Username":	accountDetails.Username,
@@ -223,13 +259,12 @@ func InsertChannel(pg *models.Postgres, ctx context.Context, accountDetails mode
 }
 
 func InsertVideo(pg *models.Postgres, ctx context.Context, vidDetails models.VideoProfile) error {
-	query := `INSERT INTO Video (VideoId, Title, Thumbnail, Watched, VideoChannel) VALUES (@VideoId, @Title, @Thumbnail, @Watched, @VideoChannel)`
+	query := `INSERT INTO Video (VideoId, Title, Thumbnail, Watched) VALUES (@VideoId, @Title, @Thumbnail, @Watched)`
 	args := pgx.NamedArgs{
 		"VideoId":	vidDetails.VideoId,
 		"Title":	vidDetails.Title,
 		"Thumbnail":	vidDetails.Thumbnail,
 		"Watched":	vidDetails.Watched,
-		"VideoChannel":	vidDetails.VideoChannel,
 	}
 	_, err := pg.Db.Exec(ctx, query, args)
 	if err != nil {
@@ -240,11 +275,10 @@ func InsertVideo(pg *models.Postgres, ctx context.Context, vidDetails models.Vid
 }
 
 func InsertCategory(pg *models.Postgres, ctx context.Context, catDetails models.CategoryProfile) error {
-	query := `INSERT INTO Category (categoryId, catName, catChannel) VALUES (@CategoryId, @CatName, @CatChannel)`
+	query := `INSERT INTO Category (categoryId, catName) VALUES (@CategoryId, @CatName)`
 	args := pgx.NamedArgs{
 		"CategoryId":	catDetails.CategoryId,
 		"CatName":	catDetails.CatName,
-		"CatChannel":	catDetails.CatChannel,
 	}
 	_, err := pg.Db.Exec(ctx, query, args)
 	if err != nil {
@@ -254,12 +288,40 @@ func InsertCategory(pg *models.Postgres, ctx context.Context, catDetails models.
 	return nil
 }
 
-func DeleteChannel(pg *models.Postgres, ctx context.Context, acctId string) error {
+func InsertChannelCategory(pg *models.Postgres, ctx context.Context, catDetails models.ChannelCategoryProfile) error {
+	query := `INSERT INTO Channel_Category (CcChannelId, CcCategoryId) VALUES (@channel, @category)`
+	args := pgx.NamedArgs{
+		"channel":	catDetails.CcChannelId,
+		"category":	catDetails.CcCategoryId,
+	}
+	_, err := pg.Db.Exec(ctx, query, args)
+	if err != nil {
+		return fmt.Errorf("unable to insert row: %w", err)
+	}
+
+	return nil
+}
+
+func InsertVideoCategory(pg *models.Postgres, ctx context.Context, catDetails models.VideoCategoryProfile) error {
+	query := `INSERT INTO Video_Category (VcVideoId, VcCategoryId) VALUES (@video, @category)`
+	args := pgx.NamedArgs{
+		"video":	catDetails.VcVideoId,
+		"category":	catDetails.VcCategoryId,
+	}
+	_, err := pg.Db.Exec(ctx, query, args)
+	if err != nil {
+		return fmt.Errorf("unable to insert row: %w", err)
+	}
+
+	return nil
+}
+
+func DeleteChannel(pg *models.Postgres, ctx context.Context, chanId string) error {
 	query := `
-	DELETE FROM Account WHERE id = @Id
+	DELETE FROM Channel WHERE channelId = @Id
 	`
 	args := pgx.NamedArgs{
-		"Id": acctId,
+		"Id": chanId,
 	}
 	_, err := pg.Db.Exec(ctx, query, args)
 	if err != nil {
@@ -271,7 +333,7 @@ func DeleteChannel(pg *models.Postgres, ctx context.Context, acctId string) erro
 
 func DeleteVideo(pg *models.Postgres, ctx context.Context, vidId string) error {
 	query := `
-	DELETE FROM Account WHERE VideoId = @vidId
+	DELETE FROM Video WHERE VideoId = @vidId
 	`
 	args := pgx.NamedArgs{
 		"vidId": vidId,
@@ -286,7 +348,7 @@ func DeleteVideo(pg *models.Postgres, ctx context.Context, vidId string) error {
 
 func DeleteCategory(pg *models.Postgres, ctx context.Context, catId string) error {
 	query := `
-	DELETE FROM Category WHERE CategoryId = @catId
+	DELETE FROM Category WHERE CategoryId = @CategoryId
 	`
 	args := pgx.NamedArgs{
 		"CategoryId":	catId,
@@ -294,6 +356,44 @@ func DeleteCategory(pg *models.Postgres, ctx context.Context, catId string) erro
 	_, err := pg.Db.Exec(ctx, query, args)
 	if err != nil {
 		return fmt.Errorf("error deleting row: %w", err)
+	}
+
+	return nil
+}
+
+func DeleteChannelCategory(pg *models.Postgres, ctx context.Context, ccDetails models.ChannelCategoryProfile) error {
+	query := `
+	DELETE FROM Channel_category WHERE ccChannelId = @channel AND ccCategoryId = @category
+	`
+	args := pgx.NamedArgs{
+		"channel": ccDetails.CcChannelId,
+		"category": ccDetails.CcCategoryId,
+	}
+	check, err := pg.Db.Exec(ctx, query, args)
+	if err != nil {
+		return fmt.Errorf("error deleting row: %w", err)
+	}
+	if check.RowsAffected() == 0 {
+		return fmt.Errorf("no matching entry to delete %w", err)
+	}
+
+	return nil
+}
+
+func DeleteVideoCategory(pg *models.Postgres, ctx context.Context, vcDetails models.VideoCategoryProfile) error {
+	query := `
+	DELETE FROM Video_category WHERE vcVideoId = @video AND vcCategoryId = @category
+	`
+	args := pgx.NamedArgs{
+		"video": vcDetails.VcVideoId,
+		"category": vcDetails.VcCategoryId,
+	}
+	check, err := pg.Db.Exec(ctx, query, args)
+	if err != nil {
+		return fmt.Errorf("error deleting row: %w", err)
+	}
+	if check.RowsAffected() == 0 {
+		return fmt.Errorf("no matching entry to delete %w", err)
 	}
 
 	return nil

@@ -14,14 +14,23 @@ type ChannelProfile struct {
 
 type VideoProfile struct {
 	VideoId string
+	VChannelId string
 	Title string
 	Thumbnail string
 	Watched bool
-	VideoChannel string
 }
 
 type CategoryProfile struct {
 	CategoryId string
 	CatName string
-	CatChannel string
+}
+
+type ChannelCategoryProfile struct {
+	CcChannelId string
+	CcCategoryId string
+}
+
+type VideoCategoryProfile struct {
+	VcVideoId string
+	VcCategoryId string
 }

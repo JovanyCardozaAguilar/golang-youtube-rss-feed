@@ -9,3 +9,6 @@ go run .
 
 Example:
 http://localhost:8080/channel?channelId=1
+
+NOTES:
+CHANNEL_CATEGORY / VIDEO_CATEGORY - Do not have update/patch methods as they are not needed, as there construction makes updating them be effectively the same as deleting and inserting them
