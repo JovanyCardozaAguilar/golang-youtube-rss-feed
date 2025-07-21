@@ -65,7 +65,12 @@ func UpdateChannelProfile(w http.ResponseWriter, r *http.Request) {
 	channelProfile.Avatar = payloadData.Avatar
 	fmt.Println("The payload data: ", payloadData)
 	fmt.Println("The changed Channel Profile: ", channelProfile)
-	data.UpdateChannel(pool, ctx, channelProfile.ChannelId, *channelProfile)
+	err := data.UpdateChannel(pool, ctx, channelProfile.ChannelId, *channelProfile)
+
+	if (err != nil) { 
+		http.Error(w, "Channel Update error", http.StatusNotFound)
+		return
+	}
 
 	w.WriteHeader(http.StatusOK)
 }
@@ -81,14 +86,24 @@ func PutChannelProfile(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	fmt.Println("The payload data: ", payloadData)
-	data.InsertChannel(pool, ctx, payloadData)
+	err := data.InsertChannel(pool, ctx, payloadData)
+
+	if (err != nil) { 
+		http.Error(w, "Channel Put error", http.StatusNotFound)
+		return
+	}
 
 	w.WriteHeader(http.StatusOK)
 }
 
 func DeleteChannelProfile(w http.ResponseWriter, r *http.Request) {
 	channelProfile := r.Context().Value("channelProfile").(*models.ChannelProfile)
-	data.DeleteChannel(pool, ctx, channelProfile.ChannelId)
+	err := data.DeleteChannel(pool, ctx, channelProfile.ChannelId)
+
+	if (err != nil) { 
+		http.Error(w, "Channel Delete error", http.StatusNotFound)
+		return
+	}
 
 	w.WriteHeader(http.StatusOK)
 }
@@ -153,7 +168,12 @@ func UpdateVideoProfile(w http.ResponseWriter, r *http.Request) {
 	videoProfile.Watched = payloadData.Watched
 	fmt.Println("The payload data: ", payloadData)
 	fmt.Println("The changed Video Profile: ", videoProfile)
-	data.UpdateVideo(pool, ctx, videoProfile.VideoId, *videoProfile)
+	err := data.UpdateVideo(pool, ctx, videoProfile.VideoId, *videoProfile)
+
+	if (err != nil) { 
+		http.Error(w, "Video Update error", http.StatusNotFound)
+		return
+	}
 
 	w.WriteHeader(http.StatusOK)
 }
@@ -169,14 +189,24 @@ func PutVideoProfile(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	fmt.Println("The payload data: ", payloadData)
-	data.InsertVideo(pool, ctx, payloadData)
+	err := data.InsertVideo(pool, ctx, payloadData)
+
+	if (err != nil) { 
+		http.Error(w, "Video Put error", http.StatusNotFound)
+		return
+	}
 
 	w.WriteHeader(http.StatusOK)
 }
 
 func DeleteVideoProfile(w http.ResponseWriter, r *http.Request) {
 	videoProfile := r.Context().Value("videoProfile").(*models.VideoProfile)
-	data.DeleteVideo(pool, ctx, videoProfile.VideoId)
+	err := data.DeleteVideo(pool, ctx, videoProfile.VideoId)
+
+	if (err != nil) { 
+		http.Error(w, "Channel Delete error", http.StatusNotFound)
+		return
+	}
 
 	w.WriteHeader(http.StatusOK)
 }
@@ -235,7 +265,12 @@ func UpdateCategoryProfile(w http.ResponseWriter, r *http.Request) {
 	categoryProfile.CatName = payloadData.CatName 
 	fmt.Println("The payload data: ", payloadData)
 	fmt.Println("The changed Category Profile: ", categoryProfile)
-	data.UpdateCategory(pool, ctx, categoryProfile.CategoryId, *categoryProfile)
+	err := data.UpdateCategory(pool, ctx, categoryProfile.CategoryId, *categoryProfile)
+
+	if (err != nil) { 
+		http.Error(w, "Channel Update error", http.StatusNotFound)
+		return
+	}
 
 	w.WriteHeader(http.StatusOK)
 }
@@ -251,14 +286,24 @@ func PutCategoryProfile(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	fmt.Println("The payload data: ", payloadData)
-	data.InsertCategory(pool, ctx, payloadData)
+	err := data.InsertCategory(pool, ctx, payloadData)
+
+	if (err != nil) { 
+		http.Error(w, "Category Put error", http.StatusNotFound)
+		return
+	}
 
 	w.WriteHeader(http.StatusOK)
 }
 
 func DeleteCategoryProfile(w http.ResponseWriter, r *http.Request) {
 	categoryProfile := r.Context().Value("categoryProfile").(*models.CategoryProfile)
-	data.DeleteCategory(pool, ctx, categoryProfile.CategoryId)
+	err := data.DeleteCategory(pool, ctx, categoryProfile.CategoryId)
+
+	if (err != nil) { 
+		http.Error(w, "Channel Delete error", http.StatusNotFound)
+		return
+	}
 
 	w.WriteHeader(http.StatusOK)
 }
@@ -313,7 +358,7 @@ func PutChannelCategoryProfile(w http.ResponseWriter, r *http.Request) {
 	err := data.InsertChannelCategory(pool, ctx, payloadData)
 
 	if (err != nil) { 
-		http.Error(w, "channel-category put error", http.StatusNotFound)
+		http.Error(w, "channel-category Put error", http.StatusNotFound)
 		return
 	}
 
@@ -397,7 +442,7 @@ func PutVideoCategoryProfile(w http.ResponseWriter, r *http.Request) {
 	err := data.InsertVideoCategory(pool, ctx, payloadData)
 
 	if (err != nil) { 
-		http.Error(w, "video-category put error", http.StatusNotFound)
+		http.Error(w, "video-category Put error", http.StatusNotFound)
 		return
 	}
 

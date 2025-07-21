@@ -259,9 +259,10 @@ func InsertChannel(pg *models.Postgres, ctx context.Context, accountDetails mode
 }
 
 func InsertVideo(pg *models.Postgres, ctx context.Context, vidDetails models.VideoProfile) error {
-	query := `INSERT INTO Video (VideoId, Title, Thumbnail, Watched) VALUES (@VideoId, @Title, @Thumbnail, @Watched)`
+	query := `INSERT INTO Video (VideoId, VChannelId, Title, Thumbnail, Watched) VALUES (@VideoId, @VChannelId, @Title, @Thumbnail, @Watched)`
 	args := pgx.NamedArgs{
 		"VideoId":	vidDetails.VideoId,
+		"VChannelId":	vidDetails.VChannelId,
 		"Title":	vidDetails.Title,
 		"Thumbnail":	vidDetails.Thumbnail,
 		"Watched":	vidDetails.Watched,
