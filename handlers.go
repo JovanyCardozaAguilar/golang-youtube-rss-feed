@@ -476,3 +476,56 @@ func DeleteVideoCategoryProfile(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+
+func handleFeedProfile(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		GetFeedProfile(w, r)
+	default:
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+func GetFeedProfile(w http.ResponseWriter, r *http.Request) {
+	feedProfile, ok := data.GetFeed(pool, ctx)
+	r = r.WithContext(context.WithValue(r.Context(), "feedProfile", feedProfile))
+	if ok != nil {
+		http.Error(w, "Error with getting feed", http.StatusForbidden)
+		return
+	}
+	if len(feedProfile) == 0 {
+		http.Error(w, "No videos found", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(r.Context().Value("feedProfile"))
+}
+
+func handleYouTubeProfile(w http.ResponseWriter, r *http.Request) {
+	youtubeId := r.URL.Query().Get("youtubeId")
+	youtubeProfile, ok := data.GetVideoCategory(pool, ctx, youtubeId)
+	r = r.WithContext(context.WithValue(r.Context(), "videoCategoryProfile", youtubeProfile))
+	if ok != nil || youtubeId == "" {
+		http.Error(w, "videoCategoryID does not exist Forbidden", http.StatusForbidden)
+		return
+	}
+	if len(youtubeProfile) == 0 {
+		http.Error(w, "No video-category found", http.StatusNotFound)
+		return
+	}
+
+	switch r.Method {
+	case http.MethodGet:
+		GetVideoCategoryProfile(w, r)
+	default:
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+func GetYouTubeProfile(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	json.NewEncoder(w).Encode(r.Context().Value("videoCategoryProfile"))
+}
+

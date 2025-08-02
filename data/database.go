@@ -186,6 +186,19 @@ func GetVideoCategory(pg *models.Postgres, ctx context.Context, vcId string) ([]
 	return pgx.CollectRows(rows, pgx.RowToStructByPos[models.VideoProfile])
 }
 
+func GetFeed(pg *models.Postgres, ctx context.Context) ([]models.FeedProfile, error) {
+	query := `
+	SELECT videoId, vChannelId, title, thumbnail, watched
+	FROM Video
+	`
+
+	rows, err := pg.Db.Query(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("QueryRow failed: %v", err)
+	}
+	return pgx.CollectRows(rows, pgx.RowToStructByPos[models.FeedProfile])
+}
+
 func UpdateChannel(pg *models.Postgres, ctx context.Context, chanId string, chanDetails models.ChannelProfile) error {
 	query := `
 			UPDATE Channel
