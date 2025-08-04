@@ -12,12 +12,21 @@ type FeedProfile struct {
 	VideoId string
 	VChannelId string
 	Title string
+	Timestamp string
 	Thumbnail string
 	Watched bool
 }
 
+type ChannelFeedProfile struct {
+	ChannelId string
+	Handle string
+	Username string
+	Avatar string
+}
+
 type ChannelProfile struct {
 	ChannelId string
+	Handle string
 	Username string
 	Avatar string
 }
@@ -26,6 +35,7 @@ type VideoProfile struct {
 	VideoId string
 	VChannelId string
 	Title string
+	Timestamp string
 	Thumbnail string
 	Watched bool
 }
@@ -55,6 +65,7 @@ type Entry struct {
 	VideoId   string `xml:"videoId"`
 	ChannelId string `xml:"channelId"`
 	Title     string `xml:"title"`
+	Published string `xml:"published"`
 	Author    struct {
 		Text string `xml:",chardata"`
 		Name string `xml:"name"`

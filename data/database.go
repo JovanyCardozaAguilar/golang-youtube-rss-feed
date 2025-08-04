@@ -6,6 +6,11 @@ import (
 	"fmt"
 	"os"
 	"sync"
+	"encoding/xml"
+	"io"
+	"net/http"
+	"regexp"
+
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -36,7 +41,7 @@ func QueryGreeting(ctx context.Context, pg *models.Postgres) (string, error) {
 	var greeting string
 	err := pg.Db.QueryRow(ctx, "select 'Hello, world!'").Scan(&greeting)
 	if err != nil {
-		return "", fmt.Errorf("QueryRow failed: %v", err)
+		return "", fmt.Errorf("QueryRow Greeting failed: %v", err)
 	}
 	return greeting, nil
 }
@@ -44,9 +49,9 @@ func QueryGreeting(ctx context.Context, pg *models.Postgres) (string, error) {
 // Test Single Query queries from the database.
 func QuerySingleTestChannel(ctx context.Context, pg *models.Postgres) (*models.ChannelProfile, error) {
 	var channel models.ChannelProfile
-	err := pg.Db.QueryRow(ctx, "SELECT * FROM CHANNEL WHERE channelId = '1'").Scan(&channel.ChannelId, &channel.Username, &channel.Avatar)
+	err := pg.Db.QueryRow(ctx, "SELECT * FROM CHANNEL WHERE channelId = '1'").Scan(&channel.ChannelId, &channel.Handle, &channel.Username, &channel.Avatar)
 	if err != nil {
-		return nil, fmt.Errorf("QueryRow failed: %v", err)
+		return nil, fmt.Errorf("QueryRow Single Channel Test failed: %v", err)
 	}
 	return &channel, nil
 }
@@ -55,7 +60,7 @@ func QuerySingleTestChannel(ctx context.Context, pg *models.Postgres) (*models.C
 func QueryMultiTestChannel(ctx context.Context, pg *models.Postgres) ([]models.ChannelProfile, error) {
 	rows, err := pg.Db.Query(ctx, "SELECT * FROM CHANNEL")
 	if err != nil {
-		return nil, fmt.Errorf("query failed: %v", err)
+		return nil, fmt.Errorf("query Mutliple Channel Test failed: %v", err)
 	}
 
 	return pgx.CollectRows(rows, pgx.RowToStructByPos[models.ChannelProfile])
@@ -63,9 +68,9 @@ func QueryMultiTestChannel(ctx context.Context, pg *models.Postgres) ([]models.C
 
 func QuerySingleTestVideo(ctx context.Context, pg *models.Postgres) (*models.VideoProfile, error) {
 	var video models.VideoProfile
-	err := pg.Db.QueryRow(ctx, "SELECT * FROM VIDEO WHERE videoId = 'videoID2'").Scan(&video.VideoId, &video.Title, &video.Thumbnail, &video.Watched)
+	err := pg.Db.QueryRow(ctx, "SELECT * FROM VIDEO WHERE videoId = 'videoID2'").Scan(&video.VideoId, &video.VChannelId, &video.Title, &video.Timestamp, &video.Thumbnail, &video.Watched)
 	if err != nil {
-		return nil, fmt.Errorf("QueryRow failed: %v", err)
+		return nil, fmt.Errorf("QueryRow Single Video Test failed: %v", err)
 	}
 	return &video, nil
 }
@@ -73,7 +78,7 @@ func QuerySingleTestVideo(ctx context.Context, pg *models.Postgres) (*models.Vid
 func QueryMultiTestVideo(ctx context.Context, pg *models.Postgres) ([]models.VideoProfile, error) {
 	rows, err := pg.Db.Query(ctx, "SELECT * FROM VIDEO")
 	if err != nil {
-		return nil, fmt.Errorf("query failed: %v", err)
+		return nil, fmt.Errorf("query Mutliple Video Test failed: %v", err)
 	}
 
 	return pgx.CollectRows(rows, pgx.RowToStructByPos[models.VideoProfile])
@@ -83,7 +88,7 @@ func QuerySingleTestCategory(ctx context.Context, pg *models.Postgres) (*models.
 	var category models.CategoryProfile
 	err := pg.Db.QueryRow(ctx, "SELECT * FROM CATEGORY WHERE categoryId = 'cat2'").Scan(&category.CategoryId, &category.CatName)
 	if err != nil {
-		return nil, fmt.Errorf("QueryRow failed: %v", err)
+		return nil, fmt.Errorf("QueryRow Single Category Test failed: %v", err)
 	}
 	return &category, nil
 }
@@ -91,10 +96,79 @@ func QuerySingleTestCategory(ctx context.Context, pg *models.Postgres) (*models.
 func QueryMultiTestCategory(ctx context.Context, pg *models.Postgres) ([]models.CategoryProfile, error) {
 	rows, err := pg.Db.Query(ctx, "SELECT * FROM CATEGORY")
 	if err != nil {
-		return nil, fmt.Errorf("query failed: %v", err)
+		return nil, fmt.Errorf("query Multiple Category Test failed: %v", err)
 	}
 
 	return pgx.CollectRows(rows, pgx.RowToStructByPos[models.CategoryProfile])
+}
+
+func retrieveChannelID(username string) (string) {
+	url := "https://www.youtube.com/@" + username
+	client := &http.Client{}
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		panic(err)
+	}
+
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
+	req.Header.Set("Accept", "text/html")
+	req.Header.Set("Accept-Language", "en-US,en;q=0.9")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+
+	bytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		panic(err)
+	}
+
+	// Get channelID
+	re := regexp.MustCompile(`"browseId":"([0-9A-Za-z_-]{24})"`)
+	match := re.FindSubmatch(bytes)
+	fmt.Printf("matches (%d): %s", len(match), match)
+	if len(match) < 2 {
+		fmt.Println("DEBUG:")
+		fmt.Println(string(bytes)) 
+		panic("channelId (browseId) not found in page source")
+	}
+
+	return string(match[1])
+}
+
+func retrieveAvatarURL(username string) (string) {
+	url := "https://www.youtube.com/@" + username
+
+	client := &http.Client{}
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		panic(err)
+	}
+
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
+	req.Header.Set("Accept", "text/html")
+	req.Header.Set("Accept-Language", "en-US,en;q=0.9")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		panic(err)
+	}
+
+	re := regexp.MustCompile(`<meta\s+property=["']og:image["']\s+content=["'](https://[^"']*yt3\.[^"']+)["']`)
+	match := re.FindSubmatch(body)
+	if len(match) < 2 {
+		panic("avatar image not found in page")
+	}
+
+	return string(match[1])
 }
 
 func GetChannel(pg *models.Postgres, ctx context.Context, chanId string) (*models.ChannelProfile, error) {
@@ -107,7 +181,7 @@ func GetChannel(pg *models.Postgres, ctx context.Context, chanId string) (*model
 		"chanId": chanId,
 	}
 
-	err := pg.Db.QueryRow(ctx, query, args).Scan(&channel.ChannelId, &channel.Username, &channel.Avatar)
+	err := pg.Db.QueryRow(ctx, query, args).Scan(&channel.ChannelId, &channel.Handle, &channel.Username, &channel.Avatar)
 	if err != nil {
 		return nil, fmt.Errorf("QueryRow failed: %v", err)
 	}
@@ -124,7 +198,7 @@ func GetVideo(pg *models.Postgres, ctx context.Context, vidId string) (*models.V
 		"vidId": vidId,
 	}
 
-	err := pg.Db.QueryRow(ctx, query, args).Scan(&video.VideoId, &video.VChannelId, &video.Title, &video.Thumbnail, &video.Watched)
+	err := pg.Db.QueryRow(ctx, query, args).Scan(&video.VideoId, &video.VChannelId, &video.Title, &video.Timestamp, &video.Thumbnail, &video.Watched)
 	if err != nil {
 		return nil, fmt.Errorf("QueryRow failed: %v", err)
 	}
@@ -169,7 +243,7 @@ func GetChannelCategory(pg *models.Postgres, ctx context.Context, ccId string) (
 
 func GetVideoCategory(pg *models.Postgres, ctx context.Context, vcId string) ([]models.VideoProfile, error) {
 	query := `
-	SELECT videoId, vChannelId, title, thumbnail, watched
+	SELECT videoId, vChannelId, title, timestamp, thumbnail, watched
 	FROM Video
 	JOIN Video_Category ON videoId = vcVideoId
 	WHERE vcCategoryId = @category
@@ -188,11 +262,42 @@ func GetVideoCategory(pg *models.Postgres, ctx context.Context, vcId string) ([]
 
 func GetFeed(pg *models.Postgres, ctx context.Context) ([]models.FeedProfile, error) {
 	query := `
-	SELECT videoId, vChannelId, title, thumbnail, watched
+	SELECT videoId, vChannelId, title, timestamp, thumbnail, watched
 	FROM Video
 	`
 
 	rows, err := pg.Db.Query(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("QueryRow failed: %v", err)
+	}
+	return pgx.CollectRows(rows, pgx.RowToStructByPos[models.FeedProfile])
+}
+
+func GetChannelFeed(pg *models.Postgres, ctx context.Context) ([]models.ChannelFeedProfile, error) {
+	query := `
+	SELECT channelId, handle, username, avatar
+	FROM Channel
+	`
+
+	rows, err := pg.Db.Query(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("QueryRow failed: %v", err)
+	}
+	return pgx.CollectRows(rows, pgx.RowToStructByPos[models.ChannelFeedProfile])
+}
+
+func GetChannelVideos(pg *models.Postgres, ctx context.Context, channelId string) ([]models.FeedProfile, error) {
+	query := `
+	SELECT videoId, vChannelId, title, timestamp, thumbnail, watched
+	FROM Video
+	WHERE VChannelId = @chanId
+	`
+
+	args := pgx.NamedArgs{
+		"chanId": channelId,
+	}
+
+	rows, err := pg.Db.Query(ctx, query, args)
 	if err != nil {
 		return nil, fmt.Errorf("QueryRow failed: %v", err)
 	}
@@ -221,12 +326,13 @@ func UpdateChannel(pg *models.Postgres, ctx context.Context, chanId string, chan
 func UpdateVideo(pg *models.Postgres, ctx context.Context, vidId string, vidDetails models.VideoProfile) error {
 	query := `
 			UPDATE Video
-			SET videoId = @VideoId, title = @Title, thumbnail = @Thumbnail, watched = @Watched
+			SET videoId = @VideoId, title = @Title, timestamp = @Timestamp, thumbnail = @Thumbnail, watched = @Watched
 			WHERE videoId = @VideoId
 			`
 	args := pgx.NamedArgs{
 		"VideoId":	vidDetails.VideoId,
 		"Title":	vidDetails.Title,
+		"Timestamp":	vidDetails.Timestamp,
 		"Thumbnail":	vidDetails.Thumbnail,
 		"Watched":	vidDetails.Watched,
 	}
@@ -256,27 +362,144 @@ func UpdateCategory(pg *models.Postgres, ctx context.Context, catId string, catD
 	return nil
 }
 
-func InsertChannel(pg *models.Postgres, ctx context.Context, accountDetails models.ChannelProfile) error {
-	query := `INSERT INTO Channel (channelid, username, avatar) VALUES (@ChannelId, @Username, @Avatar)`
+func UpdateFeed(pg *models.Postgres, ctx context.Context) ([]models.FeedProfile, error) {
+	channels, err := GetChannelFeed(pg, ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve channels: %w", err)
+	}
+
+	for _, channel := range channels {
+		feedUrl := fmt.Sprintf("https://www.youtube.com/feeds/videos.xml?channel_id=%s", channel.ChannelId)
+		resp, err := http.Get(feedUrl)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to fetch feed for channel %s: %v\n", channel.ChannelId, err)
+			continue
+		}
+		bytes, err := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to read response body for channel %s: %v\n", channel.ChannelId, err)
+			continue
+		}
+
+		var f models.Feed
+		xml.Unmarshal(bytes, &f)
+
+		for _, entry := range f.Entries {
+			err := InsertVideo(pg, ctx, models.VideoProfile{
+				VideoId:	entry.VideoId,
+				VChannelId:	entry.ChannelId,
+				Title:	entry.Title,
+				Timestamp:	entry.Published,
+				Thumbnail:	entry.Group.Thumbnail.URL,
+				Watched:	false,
+			})
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error inserting video %s: %v\n", entry.VideoId, err)
+			}
+		}
+	}
+
+	query := `
+	SELECT videoId, vChannelId, title, timestamp, thumbnail, watched
+	FROM Video
+	`
+
+	rows, err := pg.Db.Query(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("QueryRow failed: %v", err)
+	}
+	return pgx.CollectRows(rows, pgx.RowToStructByPos[models.FeedProfile])
+}
+
+func UpdateChannelVideos(pg *models.Postgres, ctx context.Context, channelId string) ([]models.FeedProfile, error) {
+	feedUrl := fmt.Sprintf("https://www.youtube.com/feeds/videos.xml?channel_id=%s", channelId)
+	resp, err := http.Get(feedUrl)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to fetch feed for channel %s: %v\n", channelId, err)
+	}
+	bytes, err := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to read response body for channel %s: %v\n", channelId, err)
+	}
+
+	var f models.Feed
+	xml.Unmarshal(bytes, &f)
+
+	for _, entry := range f.Entries {
+		err := InsertVideo(pg, ctx, models.VideoProfile{
+			VideoId:	entry.VideoId,
+			VChannelId:	entry.ChannelId,
+			Title:	entry.Title,
+			Timestamp:	entry.Published,
+			Thumbnail:	entry.Group.Thumbnail.URL,
+			Watched:	false,
+		})
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error inserting video %s: %v\n", entry.VideoId, err)
+		}
+	}
+
+	query := `
+	SELECT videoId, vChannelId, title, timestamp, thumbnail, watched
+	FROM Video
+	`
+
+	rows, err := pg.Db.Query(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("QueryRow failed: %v", err)
+	}
+	return pgx.CollectRows(rows, pgx.RowToStructByPos[models.FeedProfile])
+}
+
+func InsertChannel(pg *models.Postgres, ctx context.Context, handleString string) error {
+	url := fmt.Sprintf("https://www.youtube.com/feeds/videos.xml?channel_id=%s", retrieveChannelID(handleString))
+	resp, _ := http.Get(url)
+	bytes, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+
+	avatarUrl := retrieveAvatarURL(handleString)
+
+	var f models.Feed
+	xml.Unmarshal(bytes, &f)
+
+	query := `INSERT INTO Channel (channelid, handle, username, avatar) VALUES (@ChannelId, @Handle, @Username, @Avatar)`
 	args := pgx.NamedArgs{
-		"ChannelId":	accountDetails.ChannelId,
-		"Username":	accountDetails.Username,
-		"Avatar":	accountDetails.Avatar,
+		"ChannelId":	f.Entries[0].ChannelId,
+		"Handle":	handleString,
+		"Username":	f.Entries[0].Author.Name,
+		"Avatar":	avatarUrl,
 	}
 	_, err := pg.Db.Exec(ctx, query, args)
 	if err != nil {
 		return fmt.Errorf("unable to insert row: %w", err)
 	}
 
+	for _, entry := range f.Entries {
+		err := InsertVideo(pg, ctx, models.VideoProfile {
+			VideoId:entry.VideoId,
+			VChannelId:entry.ChannelId,
+			Title:entry.Title,
+			Timestamp:entry.Published,
+			Thumbnail:entry.Group.Thumbnail.URL,
+			Watched:false,
+		})
+		if (err != nil) { 
+					fmt.Fprintf(os.Stderr, "Error inserting video %s: %v\n", entry.VideoId, err)
+		}
+	}
+
 	return nil
 }
 
 func InsertVideo(pg *models.Postgres, ctx context.Context, vidDetails models.VideoProfile) error {
-	query := `INSERT INTO Video (VideoId, VChannelId, Title, Thumbnail, Watched) VALUES (@VideoId, @VChannelId, @Title, @Thumbnail, @Watched)`
+	query := `INSERT INTO Video (VideoId, VChannelId, Title, Timestamp, Thumbnail, Watched) VALUES (@VideoId, @VChannelId, @Title, @Timestamp, @Thumbnail, @Watched)`
 	args := pgx.NamedArgs{
 		"VideoId":	vidDetails.VideoId,
 		"VChannelId":	vidDetails.VChannelId,
 		"Title":	vidDetails.Title,
+		"Timestamp":	vidDetails.Timestamp,
 		"Thumbnail":	vidDetails.Thumbnail,
 		"Watched":	vidDetails.Watched,
 	}

@@ -5,6 +5,7 @@ CREATE TABLE CATEGORY (
 
 CREATE TABLE CHANNEL (
 	channelId VARCHAR(255) PRIMARY KEY,
+	handle VARCHAR(255) NOT NULL,
 	username VARCHAR(255) NOT NULL,
 	avatar VARCHAR(255) NOT NULL
 );
@@ -13,9 +14,10 @@ CREATE TABLE VIDEO (
 	videoId VARCHAR(255) PRIMARY KEY,
 	vChannelId VARCHAR(255) NOT NULL,
 	title VARCHAR(255) NOT NULL,
+	timestamp VARCHAR(255) NOT NULL,
 	thumbnail VARCHAR(255) NOT NULL,
 	watched BOOLEAN NOT NULL,
-	FOREIGN KEY(vChannelId) REFERENCES CHANNEL(channelId)
+	FOREIGN KEY(vChannelId) REFERENCES CHANNEL(channelId) ON DELETE CASCADE
 );
 
 CREATE TABLE CHANNEL_CATEGORY (
@@ -36,10 +38,12 @@ CREATE TABLE VIDEO_CATEGORY (
 
 CREATE TABLE temp (
 	channelId VARCHAR(255) NOT NULL,
+	handle VARCHAR(255) NOT NULL,
 	username VARCHAR(255) NOT NULL,
 	avatar VARCHAR(255) NOT NULL,
 	videoId VARCHAR(255) NOT NULL,
 	title VARCHAR(255) NOT NULL,
+	timestamp VARCHAR(255) NOT NULL,
 	thumbnail VARCHAR(255) NOT NULL,
 	watched BOOLEAN NOT NULL,
 	categoryId VARCHAR(255) NOT NULL,
@@ -51,12 +55,12 @@ FROM '/docker-entrypoint-initdb.d/test.csv'
 DELIMITER ','
 CSV HEADER;
 
-INSERT INTO CHANNEL (channelId, username, avatar)
-SELECT DISTINCT channelId, username, avatar
+INSERT INTO CHANNEL (channelId, handle, username, avatar)
+SELECT DISTINCT channelId, handle, username, avatar
 FROM temp;
 
-INSERT INTO VIDEO (videoId, vChannelId, title, thumbnail, watched)
-SELECT DISTINCT ON (videoId) videoId, channelId, title, thumbnail, watched
+INSERT INTO VIDEO (videoId, vChannelId, title, timestamp, thumbnail, watched)
+SELECT DISTINCT ON (videoId) videoId, channelId, title, timestamp, thumbnail, watched
 FROM temp
 ORDER BY videoId;
 

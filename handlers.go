@@ -12,7 +12,13 @@ import (
 
 func handleChannelProfile(w http.ResponseWriter, r *http.Request) {
 	if (r.Method == http.MethodPut) {
-		PutChannelProfile(w, r)
+	handleId := r.URL.Query().Get("handleId")
+		err := data.InsertChannel(pool, ctx, handleId)
+		if (err != nil) { 
+			http.Error(w, "Channel Put error", http.StatusNotFound)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
 		return
 	}
 
@@ -43,6 +49,7 @@ func GetChannelProfile(w http.ResponseWriter, r *http.Request) {
 
 	response := models.ChannelProfile{
 		ChannelId:	channelProfile.ChannelId,
+		Handle:	channelProfile.Handle,
 		Username:	channelProfile.Username,
 		Avatar:	channelProfile.Avatar,
 	}
@@ -69,27 +76,6 @@ func UpdateChannelProfile(w http.ResponseWriter, r *http.Request) {
 
 	if (err != nil) { 
 		http.Error(w, "Channel Update error", http.StatusNotFound)
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
-}
-
-func PutChannelProfile(w http.ResponseWriter, r *http.Request) {
-	// Decode the JSON payload into struct
-	var payloadData models.ChannelProfile
-	if err := json.NewDecoder(r.Body).Decode(&payloadData); err != nil {
-		log.Println("JSON Decode Error:", err)
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
-		return
-	}
-	defer r.Body.Close()
-
-	fmt.Println("The payload data: ", payloadData)
-	err := data.InsertChannel(pool, ctx, payloadData)
-
-	if (err != nil) { 
-		http.Error(w, "Channel Put error", http.StatusNotFound)
 		return
 	}
 
@@ -144,6 +130,7 @@ func GetVideoProfile(w http.ResponseWriter, r *http.Request) {
 		VideoId:	videoProfile.VideoId,
 		VChannelId:	videoProfile.VChannelId,
 		Title:	videoProfile.Title,
+		Timestamp:	videoProfile.Timestamp,
 		Thumbnail:	videoProfile.Thumbnail,
 		Watched:	videoProfile.Watched,
 	}
@@ -481,6 +468,8 @@ func handleFeedProfile(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		GetFeedProfile(w, r)
+	case http.MethodPatch:
+		UpdateFeedProfile(w, r)
 	default:
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 	}
@@ -502,30 +491,88 @@ func GetFeedProfile(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(r.Context().Value("feedProfile"))
 }
 
-func handleYouTubeProfile(w http.ResponseWriter, r *http.Request) {
-	youtubeId := r.URL.Query().Get("youtubeId")
-	youtubeProfile, ok := data.GetVideoCategory(pool, ctx, youtubeId)
-	r = r.WithContext(context.WithValue(r.Context(), "videoCategoryProfile", youtubeProfile))
-	if ok != nil || youtubeId == "" {
-		http.Error(w, "videoCategoryID does not exist Forbidden", http.StatusForbidden)
+func UpdateFeedProfile(w http.ResponseWriter, r *http.Request) {
+	feedProfile, ok := data.UpdateFeed(pool, ctx)
+	r = r.WithContext(context.WithValue(r.Context(), "feedProfile", feedProfile))
+	if ok != nil {
+		http.Error(w, "Error with getting feed", http.StatusForbidden)
 		return
 	}
-	if len(youtubeProfile) == 0 {
-		http.Error(w, "No video-category found", http.StatusNotFound)
+	if len(feedProfile) == 0 {
+		http.Error(w, "No videos found", http.StatusNotFound)
 		return
 	}
 
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(r.Context().Value("feedProfile"))
+}
+
+func handleChannelFeedProfile(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
-		GetVideoCategoryProfile(w, r)
+		GetChannelFeedProfile(w, r)
 	default:
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 	}
 }
 
-func GetYouTubeProfile(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
+func GetChannelFeedProfile(w http.ResponseWriter, r *http.Request) {
+	channelFeedProfile, ok := data.GetChannelFeed(pool, ctx)
+	r = r.WithContext(context.WithValue(r.Context(), "channelFeedProfile", channelFeedProfile))
+	if ok != nil {
+		http.Error(w, "Error with getting feed", http.StatusForbidden)
+		return
+	}
+	if len(channelFeedProfile) == 0 {
+		http.Error(w, "No videos found", http.StatusNotFound)
+		return
+	}
 
-	json.NewEncoder(w).Encode(r.Context().Value("videoCategoryProfile"))
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(r.Context().Value("channelFeedProfile"))
 }
 
+func handleChannelVideosProfile(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		GetChannelVideosProfile(w, r)
+	case http.MethodPatch:
+		UpdateChannelVideosProfile(w, r)
+	default:
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+func GetChannelVideosProfile(w http.ResponseWriter, r *http.Request) {
+	channelId := r.URL.Query().Get("channelId")
+	channelVideosProfile, ok := data.GetChannelVideos(pool, ctx, channelId)
+	r = r.WithContext(context.WithValue(r.Context(), "channelVideosProfile", channelVideosProfile))
+	if ok != nil {
+		http.Error(w, "Error with getting channel videos", http.StatusForbidden)
+		return
+	}
+	if len(channelVideosProfile) == 0 {
+		http.Error(w, "No videos found", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(r.Context().Value("channelVideosProfile"))
+}
+
+func UpdateChannelVideosProfile(w http.ResponseWriter, r *http.Request) {
+	channelId := r.URL.Query().Get("channelId")
+	channelVideosProfile, ok := data.UpdateChannelVideos(pool, ctx, channelId)
+	r = r.WithContext(context.WithValue(r.Context(), "channelVideosProfile", channelVideosProfile))
+	if ok != nil {
+		http.Error(w, "Error with getting feed", http.StatusForbidden)
+		return
+	}
+	if len(channelVideosProfile) == 0 {
+		http.Error(w, "No videos found", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(r.Context().Value("channelVideosProfile"))
+}
