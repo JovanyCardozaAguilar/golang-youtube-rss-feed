@@ -102,12 +102,12 @@ func QueryMultiTestCategory(ctx context.Context, pg *models.Postgres) ([]models.
 	return pgx.CollectRows(rows, pgx.RowToStructByPos[models.CategoryProfile])
 }
 
-func retrieveChannelID(username string) (string) {
+func retrieveChannelID(username string) (string, error) {
 	url := "https://www.youtube.com/@" + username
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		panic(err)
+		return "", fmt.Errorf("creating request: %w", err)
 	}
 
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
@@ -116,13 +116,13 @@ func retrieveChannelID(username string) (string) {
 
 	resp, err := client.Do(req)
 	if err != nil {
-		panic(err)
+		return "", fmt.Errorf("fetching page: %w", err)
 	}
 	defer resp.Body.Close()
 
 	bytes, err := io.ReadAll(resp.Body)
 	if err != nil {
-		panic(err)
+		return "", fmt.Errorf("unexpected status code %d", resp.StatusCode)
 	}
 
 	// Get channelID
@@ -132,10 +132,10 @@ func retrieveChannelID(username string) (string) {
 	if len(match) < 2 {
 		fmt.Println("DEBUG:")
 		fmt.Println(string(bytes)) 
-		panic("channelId (browseId) not found in page source")
+		return "", fmt.Errorf("reading body: %w", err)
 	}
 
-	return string(match[1])
+	return string(match[1]), nil
 }
 
 func retrieveAvatarURL(username string) (string) {
@@ -454,7 +454,13 @@ func UpdateChannelVideos(pg *models.Postgres, ctx context.Context, channelId str
 }
 
 func InsertChannel(pg *models.Postgres, ctx context.Context, handleString string) error {
-	url := fmt.Sprintf("https://www.youtube.com/feeds/videos.xml?channel_id=%s", retrieveChannelID(handleString))
+	chanId, err := retrieveChannelID(handleString)
+	if err != nil {
+		return fmt.Errorf("resolve channel id for @%s: %w", handleString, err)
+	}
+
+
+	url := fmt.Sprintf("https://www.youtube.com/feeds/videos.xml?channel_id=%s", chanId)
 	resp, _ := http.Get(url)
 	bytes, _ := io.ReadAll(resp.Body)
 	resp.Body.Close()
@@ -471,7 +477,7 @@ func InsertChannel(pg *models.Postgres, ctx context.Context, handleString string
 		"Username":	f.Entries[0].Author.Name,
 		"Avatar":	avatarUrl,
 	}
-	_, err := pg.Db.Exec(ctx, query, args)
+	_, err = pg.Db.Exec(ctx, query, args)
 	if err != nil {
 		return fmt.Errorf("unable to insert row: %w", err)
 	}
@@ -485,8 +491,8 @@ func InsertChannel(pg *models.Postgres, ctx context.Context, handleString string
 			Thumbnail:entry.Group.Thumbnail.URL,
 			Watched:false,
 		})
-		if (err != nil) { 
-					fmt.Fprintf(os.Stderr, "Error inserting video %s: %v\n", entry.VideoId, err)
+		if (err != nil) {
+			return fmt.Errorf("failed to insert video %s: %w", entry.VideoId, err)
 		}
 	}
 

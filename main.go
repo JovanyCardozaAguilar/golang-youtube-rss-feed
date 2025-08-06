@@ -15,7 +15,23 @@ var (
 	pool *models.Postgres
 )
 
+func cors(next http.Handler) http.Handler {
+  return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+    w.Header().Set("Access-Control-Allow-Origin", "http://localhost:5173")
+    w.Header().Set("Vary", "Origin")
+    w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
+    w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
+    if r.Method == http.MethodOptions {
+      w.WriteHeader(http.StatusNoContent)
+      return
+    }
+    next.ServeHTTP(w, r)
+  })
+}
+
 func main() {
+	mux := http.NewServeMux()
 	dsn := "postgres://testUser1:password@localhost:5432/testdb1?sslmode=disable"
 	ctx = context.Background()
 	var err error
@@ -46,15 +62,15 @@ func main() {
 		fmt.Printf("%#v\n", category)
 	}
 
-	http.HandleFunc("/channel", handleChannelProfile)
-	http.HandleFunc("/video", handleVideoProfile)
-	http.HandleFunc("/category", handleCategoryProfile)
-	http.HandleFunc("/channelCategory", handleChannelCategoryProfile)
-	http.HandleFunc("/videoCategory", handleVideoCategoryProfile)
-	http.HandleFunc("/feed", handleFeedProfile)
-	http.HandleFunc("/channelFeed", handleChannelFeedProfile)
-	http.HandleFunc("/channelVideos", handleChannelVideosProfile)
+	mux.HandleFunc("/channel", handleChannelProfile)
+	mux.HandleFunc("/video", handleVideoProfile)
+	mux.HandleFunc("/category", handleCategoryProfile)
+	mux.HandleFunc("/channelCategory", handleChannelCategoryProfile)
+	mux.HandleFunc("/videoCategory", handleVideoCategoryProfile)
+	mux.HandleFunc("/feed", handleFeedProfile)
+	mux.HandleFunc("/channelFeed", handleChannelFeedProfile)
+	mux.HandleFunc("/channelVideos", handleChannelVideosProfile)
 
 	log.Println("Server is on port 8080...")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	log.Fatal(http.ListenAndServe(":8080", cors(mux)))
 }

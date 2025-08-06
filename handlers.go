@@ -12,13 +12,17 @@ import (
 
 func handleChannelProfile(w http.ResponseWriter, r *http.Request) {
 	if (r.Method == http.MethodPut) {
-	handleId := r.URL.Query().Get("handleId")
-		err := data.InsertChannel(pool, ctx, handleId)
-		if (err != nil) { 
-			http.Error(w, "Channel Put error", http.StatusNotFound)
+		handleId := r.URL.Query().Get("handleId")
+		if handleId == "" {
+			http.Error(w, "handleId is required", http.StatusBadRequest)
 			return
 		}
-		w.WriteHeader(http.StatusOK)
+		err := data.InsertChannel(pool, ctx, handleId)
+		if (err != nil) { 
+			http.Error(w, "Channel Put error", http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusCreated)
 		return
 	}
 
@@ -150,8 +154,6 @@ func UpdateVideoProfile(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	videoProfile.Title = payloadData.Title
-	videoProfile.Thumbnail = payloadData.Thumbnail
 	videoProfile.Watched = payloadData.Watched
 	fmt.Println("The payload data: ", payloadData)
 	fmt.Println("The changed Video Profile: ", videoProfile)
